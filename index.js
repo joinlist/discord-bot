@@ -21,7 +21,7 @@ const envFILE = dotenv.config()
 const TOKEN = process.env['TOKEN']
 
 // Edit your TEST_GUILD_ID here in the env file for development
-const TEST_GUILD_ID =  envFILE?.parsed['TEST_GUILD_ID']
+const TEST_GUILD_ID = process.env['TEST_GUILD_ID']
 
 // Creating a collection for commands in client
 client.commands = new Collection()
