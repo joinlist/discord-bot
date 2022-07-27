@@ -32,7 +32,6 @@ for (const file of commandFiles) {
   client.commands.set(command.data.name, command)
 }
 
-// 
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
   console.log('Ready!')
