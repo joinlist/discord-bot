@@ -2,18 +2,14 @@ const { SlashCommandBuilder } = require('@discordjs/builders')
 const axios = require('axios')
 const { MessageEmbed } = require('discord.js')
 
-function isHex(num) {
-  return Boolean(num.match(/^0x[0-9a-f]+$/i))
+const get = async url => {
+  return await axios
+    .get(url)
+    .then(r => ({ data: r.data.data }))
+    .catch(e => ({ error: e.response.data.error }))
 }
 
-const isEns = (str) => {
-  console.log(str)
-  const parts = str?.split('.')
-  if (!parts) return false
-  if (parts[1] === 'eth') return true
-  else return false
-}
-
+const log = (...args) => console.log(...args)
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,72 +23,81 @@ module.exports = {
     ),
   async execute(interaction) {
     const address = interaction.options.getString('address')
-    // https://www.joinlist.me/api/v1/entries?address=sam.eth&projectId=273
 
-    // get projectId from guildId
-    console.log(interaction.guildId)
-
-
-    // get projectId from guildId
-    const slug = 'foo'
-    const projectId = '273'
-    const projectName = 'Joinlist X Doodles'
+    log('[COMMAND][VERIFY] verifying address', address)
 
     try {
-      const { data, error } = await axios
-        .get(
-          `https://www.joinlist.me/api/v1/entries?address=${address}&projectId=${projectId}`
-        )
-        .then(r => ({ data: r.data.data }))
-        .catch(e => ({ error: e.response.data.error }))
+      const { guildId } = interaction
 
-      // if (error) { 
-      //   throw Error(`Failed to get entry from joinlist.me: ${error.message}`)
-      // }
+      log('[COMMAND][VERIFY] api/v1/discord getting...', guildId)
+      // https://www.joinlist.me/api/v1/discord?serverId=902229215993282581
+      const { data: discordData } = await get(
+        `https://www.joinlist.me/api/v1/discord?serverId=${guildId}`
+      )
+      log('[COMMAND][VERIFY] api/v1/discord response', discordData)
 
-      // if address is an invalid hex or invalid ens, throw error
-      // if (!isHex(address) || !isEns(address)) { 
-      //   throw Error(`Address must be a valid hex or ens`)
-      // }
+
+      if (discordData?.length === 0) {
+        // TODO: better error message
+        return interaction.reply({
+          content: 'No project found for this guild.',
+          ephemeral: true
+        })
+      }
+
+      const projectId = discordData[0].projectId
+
+     
+      // now get the project details givent the projectId
+      log('[COMMAND][VERIFY] api/v4/projects getting...', projectId)
+      const { data: projectData } = await get(
+        `https://www.joinlist.me/api/v4/projects/${projectId}`
+      )
+      log('[COMMAND][VERIFY] api/v4/projects response', projectData)
+
+      if (!projectData) {
+        return interaction.reply({
+          content: 'No project found for this guild.',
+          ephemeral: true
+        })
+      }
+
+      const { slug, name, id } = projectData
+
+      // now get the project details givent the projectId
+      log('[COMMAND][VERIFY] api/v1/entries getting...', projectId)
+      const { data } = await get(
+        `https://www.joinlist.me/api/v1/entries?address=${address}&projectId=${id}`
+      )
+      log('[COMMAND][VERIFY] api/v1/entries response', data)
 
       const isVerified = data?.length > 0
+
+      log('[COMMAND][VERIFY] isVerified', isVerified)
 
       interaction.reply({
         embeds: [
           new MessageEmbed()
             .setColor(isVerified ? 'GREEN' : 'RED')
-            .setTitle(projectName)
-            // .setDescription(`Verified: ${isVerified}`)
-           
-            //.setColor(0x0099FF)
-            //.setTitle('Some title')
+            .setTitle(name)
             .setURL(`https://joinlist.me/${slug}`) // could be the url which would show the address in the Verify input. e.g joinlist.me/{project}?address={address}
-            //.setAuthor({ name: 'Some name', iconURL: 'https://i.imgur.com/AfFp7pu.png', url: 'https://discord.js.org' })
-            .setDescription(isVerified ? 'Wallet successfully registered' : 'Wallet not registered')
+            .setDescription(
+              isVerified
+                ? 'Wallet successfully registered'
+                : 'Wallet not registered'
+            )
             .setThumbnail(
               isVerified
                 ? 'https://dpspszizureppmrxkcri.supabase.co/storage/v1/object/public/files/tick.png'
                 : 'https://dpspszizureppmrxkcri.supabase.co/storage/v1/object/public/files/cross.png'
             )
-            // .addFields(
-            //   { name: 'Regular field title', value: 'Some value here' },
-            //   { name: '\u200B', value: '\u200B' },
-            //   { name: 'Inline field title', value: 'Some value here', inline: true },
-            //   { name: 'Inline field title', value: 'Some value here', inline: true },
-            // )
-            // .addFields({
-            //   name: 'Inline field title',
-            //   value: 'Some value here',
-            //   inline: true
-            // })
-            //.setImage('https://i.imgur.com/AfFp7pu.png')
             .setTimestamp()
             .setFooter(`Address: ${address}`)
         ]
       })
-
-      //interaction.reply({ content: data?.length === 1 ? 'Yes' : 'No' })
     } catch (e) {
+      log('[COMMAND][VERIFY] Something went wrong handling the verify command', e)
+
       interaction.reply({
         content: `Something went wrong getting the entry for ${address}. Reason: ${e.message}`
       })
