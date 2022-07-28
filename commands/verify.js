@@ -3,17 +3,40 @@ const axios = require('axios')
 const { MessageEmbed } = require('discord.js')
 const { db } = require('../utils/db')
 
-const get = async url => {
-  return await axios
-    .get(url)
-    .then(r => ({ data: r.data.data }))
-    .catch(e => ({ error: e.response.data.error }))
-}
-
 const log = (...args) => console.log(...args)
 
 const prettyHex = (str, len = 4) =>
   str && `${str.substring(0, len)}...${str.substring(str.length - len)}`
+
+const getAccounts = (userId) => {
+  const profiles = (
+    await db
+      .from('Account')
+      .select('provider, providerAccountId, profile')
+      .match({ userId })
+  )?.data
+  const accounts = profiles?.map(
+    ({ provider, providerAccountId, profile }) => {
+      if (provider === 'siwe') {
+        return {
+          provider: 'ethereum',
+          username: profile?.preferred_username ? prettyHex(profile.preferred_username) : providerAccountId
+        }
+      } else if (provider === 'twitter') {
+        return {
+          provider,
+          username: profile?.screen_name
+        }
+      } else if (provider === 'discord') {
+        return {
+          provider,
+          username: profile?.username
+        }
+      }
+    }
+  )
+  return accounts
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -51,27 +74,7 @@ module.exports = {
         }
 
         // get the user accounts given the userId
-        const profiles = (
-          await db.from('Account').select('provider, profile').match({ userId })
-        )?.data
-        const accounts = profiles.map(({ provider, profile }) => {
-          if (provider === 'siwe') {
-            return {
-              provider: 'ethereum',
-              username: prettyHex(profile.preferred_username)
-            }
-          } else if (provider === 'twitter') {
-            return {
-              provider,
-              username: profile.screen_name
-            }
-          } else if (provider === 'discord') {
-            return {
-              provider,
-              username: profile.username
-            }
-          }
-        })
+        const accounts = await getAccounts(userId)
 
         // get the projectId from the guildId
         const projectId = (
@@ -117,7 +120,7 @@ module.exports = {
               .setURL(`https://joinlist.me/${project.slug}`) // could be the url which would show the address in the Verify input. e.g joinlist.me/{project}?address={address}
               .addFields(
                 { name: '\u200B', value: '\u200B' },
-                ...accounts.map(({ provider, username }) => ({
+                ...accounts?.map(({ provider, username }) => ({
                   name: provider,
                   value: username,
                   inline: true
@@ -152,34 +155,8 @@ module.exports = {
           throw Error(`No user found for address ${address}`)
         }
 
-        // get all accounts for userId
         // get the user accounts given the userId
-        const profiles = (
-          await db
-            .from('Account')
-            .select('provider, providerAccountId, profile')
-            .match({ userId })
-        )?.data
-        const accounts = profiles.map(
-          ({ provider, providerAccountId, profile }) => {
-            if (provider === 'siwe') {
-              return {
-                provider: 'ethereum',
-                username: profile?.preferred_username ?? providerAccountId
-              }
-            } else if (provider === 'twitter') {
-              return {
-                provider,
-                username: profile?.screen_name
-              }
-            } else if (provider === 'discord') {
-              return {
-                provider,
-                username: profile?.username
-              }
-            }
-          }
-        )
+        const accounts = await getAccounts(userId)
 
         // get the projectId  from Discord where serverId = guildId
         const projectId = (
@@ -229,7 +206,7 @@ module.exports = {
               .setURL(`https://joinlist.me/${project.slug}`) // could be the url which would show the address in the Verify input. e.g joinlist.me/{project}?address={address}
               .addFields(
                 { name: '\u200B', value: '\u200B' },
-                ...accounts.map(({ provider, username }) => ({
+                ...accounts?.map(({ provider, username }) => ({
                   name: provider,
                   value: username,
                   inline: true
