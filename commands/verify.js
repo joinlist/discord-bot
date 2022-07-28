@@ -96,10 +96,6 @@ module.exports = {
               .single()
           )?.data?.id != null
 
-        // if (!hasEntry) {
-        //   throw Error('User does not have an entry for this project')
-        // }
-
         // get the project from the projectId
         const project = (
           await db
@@ -113,20 +109,17 @@ module.exports = {
           embeds: [
             new MessageEmbed()
               .setColor(hasEntry ? 'GREEN' : 'RED')
-              .setTitle(project.name)
+              .setTitle(hasEntry ? `Visit ${project.name} on Joinlist` : `Visit ${project.name} on Joinlist to register`)
               .setURL(`https://joinlist.me/${project.slug}`) // could be the url which would show the address in the Verify input. e.g joinlist.me/{project}?address={address}
               .addFields(
                 { name: '\u200B', value: '\u200B' },
                 ...accounts.map(({ provider, username }) => ({ name: provider, value: username, inline: true })),
-                // { name: 'Discord', value: 'ekko', inline: true },
-                // { name: 'Twitter', value: 'sambarrowclough', inline: true },
-                // { name: 'Ethereum', value: '0x..abc', inline: true },
                 { name: '\u200B', value: '\u200B' }
               )
               .setDescription(
                 hasEntry
-                  ? 'Wallet successfully registered'
-                  : 'Wallet not registered'
+                  ? '✅ Wallet successfully registered'
+                  : '❌ Wallet not registered'
               )
               .setThumbnail(
                 hasEntry
@@ -134,7 +127,6 @@ module.exports = {
                   : 'https://dpspszizureppmrxkcri.supabase.co/storage/v1/object/public/files/cross.png'
               )
               .setTimestamp()
-            //.setFooter(`Address: ${address}`)
           ]
         })
       } else {
