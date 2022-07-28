@@ -1,5 +1,4 @@
 const { SlashCommandBuilder } = require('@discordjs/builders')
-const axios = require('axios')
 const { MessageEmbed } = require('discord.js')
 const { db } = require('../utils/db')
 
@@ -8,7 +7,7 @@ const log = (...args) => console.log(...args)
 const prettyHex = (str, len = 4) =>
   str && `${str.substring(0, len)}...${str.substring(str.length - len)}`
 
-const getAccounts = (userId) => {
+const getAccounts = async (userId) => {
   const profiles = (
     await db
       .from('Account')
@@ -35,7 +34,7 @@ const getAccounts = (userId) => {
       }
     }
   )
-  return accounts
+  return accounts || []
 }
 
 module.exports = {
@@ -151,9 +150,9 @@ module.exports = {
             .match({ providerAccountId: address })
             ?.single()
         )?.data?.userId
-        if (!userId) {
-          throw Error(`No user found for address ${address}`)
-        }
+        // if (!userId) {
+        //   throw Error(`No user found for address ${address}`)
+        // }
 
         // get the user accounts given the userId
         const accounts = await getAccounts(userId)
@@ -181,9 +180,9 @@ module.exports = {
               .single()
           )?.data?.id != null
 
-        if (!hasEntry) {
-          throw Error('User does not have an entry for this project')
-        }
+        // if (!hasEntry) {
+        //   throw Error('User does not have an entry for this project')
+        // }
 
         // get the project from the projectId
         const project = (
