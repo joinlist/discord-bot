@@ -122,8 +122,8 @@ module.exports = {
                 ...accounts?.map((account) => {
                   if (!account) return
                   return {
-                    name: provider,
-                    value: username,
+                    name: account?.provider,
+                    value: account?.username,
                     inline: true
                   }
                 }),
