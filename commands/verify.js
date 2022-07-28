@@ -120,7 +120,7 @@ module.exports = {
               .addFields(
                 { name: '\u200B', value: '\u200B' },
                 ...accounts?.map((account) => {
-                  if (!account) return
+                  if (!account?.provider) return
                   return {
                     name: account?.provider,
                     value: account?.username,
