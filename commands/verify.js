@@ -7,33 +7,33 @@ const log = (...args) => console.log(...args)
 const prettyHex = (str, len = 4) =>
   str && `${str.substring(0, len)}...${str.substring(str.length - len)}`
 
-const getAccounts = async (userId) => {
+const getAccounts = async userId => {
   const profiles = (
     await db
       .from('Account')
       .select('provider, providerAccountId, profile')
       .match({ userId })
   )?.data
-  const accounts = profiles?.map(
-    ({ provider, providerAccountId, profile }) => {
-      if (provider === 'siwe') {
-        return {
-          provider: 'ethereum',
-          username: profile?.preferred_username ? prettyHex(profile.preferred_username) : providerAccountId
-        }
-      } else if (provider === 'twitter') {
-        return {
-          provider,
-          username: profile?.screen_name
-        }
-      } else if (provider === 'discord') {
-        return {
-          provider,
-          username: profile?.username
-        }
+  const accounts = profiles?.map(({ provider, providerAccountId, profile }) => {
+    if (provider === 'siwe') {
+      return {
+        provider: 'ethereum',
+        username: profile?.preferred_username
+          ? prettyHex(profile.preferred_username)
+          : providerAccountId
+      }
+    } else if (provider === 'twitter') {
+      return {
+        provider,
+        username: profile?.screen_name
+      }
+    } else if (provider === 'discord') {
+      return {
+        provider,
+        username: profile?.username
       }
     }
-  )
+  })
   return accounts || []
 }
 
@@ -119,11 +119,14 @@ module.exports = {
               .setURL(`https://joinlist.me/${project.slug}`) // could be the url which would show the address in the Verify input. e.g joinlist.me/{project}?address={address}
               .addFields(
                 { name: '\u200B', value: '\u200B' },
-                ...accounts?.map(({ provider, username }) => ({
-                  name: provider,
-                  value: username,
-                  inline: true
-                })),
+                ...accounts?.map((account) => {
+                  if (!account) return
+                  return {
+                    name: provider,
+                    value: username,
+                    inline: true
+                  }
+                }),
                 { name: '\u200B', value: '\u200B' }
               )
               .setDescription(
