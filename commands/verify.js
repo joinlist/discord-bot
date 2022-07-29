@@ -61,6 +61,8 @@ module.exports = {
         log('[COMMAND][/VERIFY] START', guildId, discordUserId)
         //console.log('discordUserId', discordUserId, 'guildId', guildId)
 
+        log('[COMMAND][/VERIFY] getting userId')
+
         // is it possible to get the other accounts that match userId here?
         const userId = (
           await db
@@ -74,10 +76,15 @@ module.exports = {
           throw Error('account not found')
         }
 
+        log('[COMMAND][/VERIFY] got userId')
+
         // get the user accounts given the userId
+        log('[COMMAND][/VERIFY] getting accounts')
         const accounts = await getAccounts(userId)
+        log('[COMMAND][/VERIFY] got accounts')
 
         // get the projectId from the guildId
+        log('[COMMAND][/VERIFY] getting projectId')
         const projectId = (
           await db
             .from('Discord')
@@ -90,7 +97,10 @@ module.exports = {
           throw Error('Project not found')
         }
 
+        log('[COMMAND][/VERIFY] got projectId')
+
         // check if the user has an entry for this project
+        log('[COMMAND][/VERIFY] checking if user has entry')
         const hasEntry =
           (
             await db
@@ -99,8 +109,10 @@ module.exports = {
               .match({ userId, projectId })
               .single()
           )?.data?.id != null
+        log('[COMMAND][/VERIFY] user has entry', hasEntry)
 
         // get the project from the projectId
+        log('[COMMAND][/VERIFY] getting project')
         const project = (
           await db
             .from('Project')
@@ -108,6 +120,7 @@ module.exports = {
             .match({ id: projectId })
             .single()
         )?.data
+        log('[COMMAND][/VERIFY] got project')
 
         log('[COMMAND][/VERIFY] sending reply')
 
