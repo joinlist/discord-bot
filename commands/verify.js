@@ -80,7 +80,7 @@ module.exports = {
 
         // get the user accounts given the userId
         log('[COMMAND][/VERIFY] getting accounts')
-        const accounts = await getAccounts(userId)
+        const accounts = (await getAccounts(userId))?.filter(Boolean)
         log('[COMMAND][/VERIFY] got accounts')
 
         // get the projectId from the guildId
@@ -137,7 +137,6 @@ module.exports = {
               .addFields(
                 { name: '\u200B', value: '\u200B' },
                 ...accounts?.map((account) => {
-                  if (!account?.provider) return { name: '\u200B', value: '\u200B' }
                   return {
                     name: account?.provider,
                     value: account?.username,
