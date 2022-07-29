@@ -48,7 +48,7 @@ module.exports = {
   async execute(interaction) {
     const address = interaction.options.getString('address')
 
-    log('[COMMAND][VERIFY] verifying address', address)
+    
 
     try {
       const {
@@ -58,8 +58,10 @@ module.exports = {
 
       // verify the discord has registered on the project
       if (!address) {
-        console.log('discordUserId', discordUserId, 'guildId', guildId)
+        log('[COMMAND][/VERIFY] START', guildId, discordUserId)
+        //console.log('discordUserId', discordUserId, 'guildId', guildId)
 
+        // is it possible to get the other accounts that match userId here?
         const userId = (
           await db
             .from('Account')
@@ -107,6 +109,8 @@ module.exports = {
             .single()
         )?.data
 
+        log('[COMMAND][/VERIFY] sending reply')
+
         interaction.reply({
           embeds: [
             new MessageEmbed()
@@ -143,7 +147,7 @@ module.exports = {
           ]
         })
       } else {
-        console.log('discordUserId', discordUserId, 'guildId', guildId)
+        log('[COMMAND][/VERIFY ADDRESS] START', guildId, discordUserId)
 
         // get userId from account where providerAccountId = address
         const userId = (
@@ -195,6 +199,8 @@ module.exports = {
             .match({ id: projectId })
             .single()
         )?.data
+
+        log('[COMMAND][/VERIFY ADDRESS] sending reply')
 
         interaction.reply({
           embeds: [
