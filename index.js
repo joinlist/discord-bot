@@ -2,11 +2,11 @@ const fs = require('fs')
 const { REST } = require('@discordjs/rest')
 const { Routes } = require('discord-api-types/v9')
 // Require the necessary discord.js classes
-const { Client, Intents, Collection } = require('discord.js')
+const { Client, GatewayIntentBits, Collection } = require('discord.js')
 
 // Create a new client instance
 const client = new Client({
-  intents: [Intents.FLAGS.GUILDS]
+  intents: [GatewayIntentBits.Guilds]
 })
 
 // Loading commands from the commands folder
@@ -65,7 +65,7 @@ client.once('ready', () => {
 })
 
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isCommand()) return
+  //if (!interaction.isCommand()) return
   const command = client.commands.get(interaction.commandName)
   if (!command) return
   try {
@@ -77,6 +77,21 @@ client.on('interactionCreate', async interaction => {
       ephemeral: true
     })
   }
+})
+
+client.on('roleCreate', async role => {
+  console.log('roleCreate', role)
+  console.log(role.iconURL)
+})
+
+client.on('roleUpdate', async (oldRole, newRole) => {
+  console.log('roleUpdate', oldRole, newRole)
+  console.log(JSON.stringify(oldRole))
+  //console.log(newRole.guild.iconURL())
+})
+
+client.on('roleDelete', async role => {
+  console.log('roleDelete', role)
 })
 
 // Login to Discord with your client's token

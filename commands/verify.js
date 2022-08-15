@@ -41,14 +41,16 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('verify')
     .setDescription('Verify a wallet has registered on a project.')
-    .addStringOption(
-      option => option.setName('address').setDescription('Enter your address')
-      //.setRequired(true)
+    .addStringOption(option =>
+      option.setName('project').setDescription('Enter your address')
+    )
+    .addStringOption(option =>
+      option
+        .setName('address')
+        .setDescription('Enter your address')
     ),
   async execute(interaction) {
     const address = interaction.options.getString('address')
-
-    
 
     try {
       const {
@@ -84,6 +86,8 @@ module.exports = {
         log('[COMMAND][/VERIFY] got accounts')
 
         // get the projectId from the guildId
+        // TODO: creator can install bot on multiple projects.
+        // how do we know which one to grab?
         log('[COMMAND][/VERIFY] getting projectId')
         const projectId = (
           await db
@@ -111,7 +115,7 @@ module.exports = {
           )?.data?.id != null
         log('[COMMAND][/VERIFY] user has entry', hasEntry)
 
-        // get the project from the projectId
+        // get the project from the projectId to disiplay some info like the name and the url.
         log('[COMMAND][/VERIFY] getting project')
         const project = (
           await db
@@ -136,7 +140,7 @@ module.exports = {
               .setURL(`https://joinlist.me/${project.slug}`) // could be the url which would show the address in the Verify input. e.g joinlist.me/{project}?address={address}
               .addFields(
                 { name: '\u200B', value: '\u200B' },
-                ...accounts?.map((account) => {
+                ...accounts?.map(account => {
                   return {
                     name: account?.provider,
                     value: account?.username,

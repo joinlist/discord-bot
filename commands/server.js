@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders')
-const { MessageEmbed } = require('discord.js')
+const { EmbedBuilder } = require('discord.js')
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('server')
@@ -7,8 +7,8 @@ module.exports = {
   async execute(interaction) {
     interaction.reply({
       embeds: [
-        new MessageEmbed()
-          .setColor('RANDOM')
+        new EmbedBuilder()
+          .setColor(0x0099FF)
           .setTitle(`Server Name: ${interaction.guild.name}`)
           .setDescription(`Total members: ${interaction.guild.memberCount}`)
       ]

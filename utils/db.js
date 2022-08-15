@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config()
 const supabaseUrl = `https://${
   process.env.SUPABASE_PROJECT_ID || process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID
 }.supabase.co`
