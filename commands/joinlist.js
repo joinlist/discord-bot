@@ -193,7 +193,7 @@ module.exports = {
 
         // get the user accounts given the userId
         log('[JOINLIST][VERIFY][CMD] getting accounts')
-        const accounts = (await getAccounts(userId))?.filter(Boolean)
+        let accounts = (await getAccounts(userId))?.filter(Boolean)
         log('[JOINLIST][VERIFY][CMD] got accounts')
 
         // check if the user has an entry for this project
@@ -216,6 +216,11 @@ module.exports = {
         )?.data
 
         log('[JOINLIST][VERIFY][CMD] sending reply')
+
+        // if no accounts found, just display the address in the account
+        if (accounts.length === 0) { 
+          accounts = [{ provider: 'address', username: address }]
+        }
 
         interaction.reply({
           embeds: [
