@@ -115,7 +115,9 @@ client.once("ready", async () => {
         // Update the RaffleWinnerQueue from the projectId and mark the flag active as false. This means we don't need to query this queue anymore since we have proccessed this
         const { error } = await db
           .from("RaffleWinnerQueue")
-          .update("active", false)
+          .update({
+            active: false,
+          })
           .match({ projectId });
 
         if (error) {
