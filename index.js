@@ -55,31 +55,71 @@ client.once("ready", async () => {
     /**
      * Send message to winners of the raffle
      */
-    db.from("RaffleWinnerQueue")
-      .on("*", async (payload) => {
+    db.from("Project")
+      .on("UPDATE", async (payload) => {
         // Payload looks like:
         // {
         //   schema: 'public',
-        //   table: 'RaffleWinnerQueue',
-        //   commit_timestamp: '2022-10-08T20:04:19Z',
-        //   eventType: 'INSERT',
+        //   table: 'Project',
+        //   commit_timestamp: '2023-01-12T14:10:37Z',
+        //   eventType: 'UPDATE',
         //   new: {
-        //     createdAt: '2022-10-08T20:04:19.605+00:00',
-        //     id: 7,
-        //     projectId: 5,
-        //     updatedAt: null
+        //     id: 1474,
+        //     html: null,
+        //     ogImage: null,
+        //     mintPrice: null,
+        //     status: 'sfd',
+        //     type: null,
+        //     questionRequired: null,
+        //     raffleQuantity: null,
+        //     startAt: null,
+        //     showEntries: true,
+        //     image: null,
+        //     supply: null,
+        //     addressRequired: null,
+        //     phoneRequired: null,
+        //     updatedAt: '2023-01-12T12:37:54.53+00:00',
+        //     questionText: null,
+        //     verified: false,
+        //     website: null,
+        //     contractsMustOwn: 'any',
+        //     userId: 9543,
+        //     hasBrandingEnabled: true,
+        //     waitlistSearch: false,
+        //     mintSupply: null,
+        //     createdAt: '2023-01-12T11:54:04.983+00:00',
+        //     maxEntries: null,
+        //     questionType: null,
+        //     twoFactorAuth: null,
+        //     public: true,
+        //     endAt: null,
+        //     reward: false,
+        //     description: null,
+        //     themeCustom: null,
+        //     mintDate: null,
+        //     slug: 'tkja0',
+        //     emailRequired: null,
+        //     name: 'Doodles X Copy',
+        //     nameRequired: null,
+        //     chain: null
         //   },
-        //   old: {},
+        //   old: { id: 1474 },
         //   errors: null
         // }
 
-        //console.log("Got payload: ", payload);
+        console.log("Got payload: ", payload);
 
         try {
-          const projectId = payload.new.projectId;
+          const projectId = payload.new.id;
+          const status = payload.new.status;
+          const projectName = payload.new.name;
+
+          if (status !== "drawn") {
+            return console.log("Project is not drawn yet");
+          }
 
           // Get the channelId from the database from the projectId
-          const { raffleChannelId, projectName } =
+          const { raffleChannelId } =
             (
               await db
                 .from("Discord")
@@ -117,18 +157,6 @@ client.once("ready", async () => {
           channel.send(`Winners for ${projectName}: ${builtMessage}`);
 
           console.log(`Sent winners for ${projectName} : ${entries.length}`);
-
-          // Update the RaffleWinnerQueue from the projectId and mark the flag active as false. This means we don't need to query this queue anymore since we have proccessed this
-          const { error } = await db
-            .from("RaffleWinnerQueue")
-            .update({
-              active: false,
-            })
-            .match({ projectId });
-
-          if (error) {
-            console.log(error);
-          }
         } catch (error) {
           console.log(error);
 
