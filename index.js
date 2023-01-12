@@ -2,8 +2,22 @@ const fs = require("fs");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
 // Require the necessary discord.js classes
-const { Client, GatewayIntentBits, Collection } = require("discord.js");
+const {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 const { db } = require("./utils/db.js");
+
+const getProject = async ({ projectId, select = "id, name, slug" }) => {
+  return (
+    await db.from("Project").select(select).match({ id: projectId }).single()
+  )?.data;
+};
 
 const getWinners = async (projectId) => {
   const { data } = await db.from("Entry").select("discordUserId").match({
@@ -51,10 +65,11 @@ client.once("ready", async () => {
     version: "9",
   }).setToken(TOKEN);
 
+  /**
+   * Announce winners of the raffle
+   */
+
   (async () => {
-    /**
-     * Send message to winners of the raffle
-     */
     db.from("Project")
       .on("UPDATE", async (payload) => {
         // Payload looks like:
@@ -164,10 +179,12 @@ client.once("ready", async () => {
         }
       })
       .subscribe();
+  })();
 
-    /**
-     * Register the commands for TEST_GUILD_ID (development) and CLIENT_ID (production)
-     */
+  /**
+   * Registering the commands
+   */
+  (async () => {
     try {
       if (!TEST_GUILD_ID) {
         await rest.put(Routes.applicationCommands(CLIENT_ID), {
@@ -185,6 +202,67 @@ client.once("ready", async () => {
           "Successfully registered application commands for development guild"
         );
       }
+    } catch (error) {
+      if (error) console.error(error);
+    }
+  })();
+
+  /**
+   * Announce the raffle
+   */
+  (async () => {
+    try {
+      const channel = client.channels.cache.get("1002460057222520955");
+      const project = await getProject({
+        projectId: 1474,
+        select: "*",
+      });
+      const exampleEmbed = new EmbedBuilder()
+        .setColor(0x0099ff)
+        .setTitle(project.name)
+        .setURL("https://discord.js.org/")
+        // .setAuthor({
+        //   name: "Some name",
+        //   iconURL: "https://i.imgur.com/AfFp7pu.png",
+        //   url: "https://discord.js.org",
+        // })
+        .setDescription(project?.description)
+        .setThumbnail(project.image)
+        .addFields({ name: "\u200B", value: "\u200B" })
+        .addFields({
+          name: "Ends at",
+          // project.endAt format is ISO 2023-01-12 12:37:54.53+00, format to Thu Jan 15:15 format
+          value: new Date(project.endAt).toLocaleString(),
+        })
+        //.addFields({ name: "\u200B", value: "\u200B" })
+        // .addFields({
+        //   name: "Inline field title",
+        //   value: "Some value here",
+        // })
+        // //.addFields({ name: "\u200B", value: "\u200B" })
+        // .addFields({
+        //   name: "Inline field title",
+        //   value: "Some value here!",
+        // })
+        .addFields({ name: "\u200B", value: "\u200B" })
+        // .setImage(
+        //   "https://pbs.twimg.com/profile_banners/1487866247803027457/1643571790"
+        // )
+        .setTimestamp();
+      // .setFooter({
+      //   text: "Some footer text here",
+      //   iconURL: "https://i.imgur.com/AfFp7pu.png",
+      // });
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          //.setCustomId("primary")
+          .setLabel("Go to project")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`https://www.joinlist.me/${project.slug}`)
+      );
+
+      channel.send({ embeds: [exampleEmbed], components: [row] });
     } catch (error) {
       if (error) console.error(error);
     }
