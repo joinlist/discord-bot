@@ -76,13 +76,14 @@ client.once("ready", async () => {
         const projectId = payload.new.projectId;
 
         // Get the channelId from the database from the projectId
-        const { raffleChannelId, projectName } = (
-          await db
-            .from("Discord")
-            .select("raffleChannelId")
-            .match({ projectId })
-            .single()
-        )?.data;
+        const { raffleChannelId, projectName } =
+          (
+            await db
+              .from("Discord")
+              .select("raffleChannelId")
+              .match({ projectId })
+              .single()
+          )?.data || {};
 
         if (!raffleChannelId) {
           return console.log("No channel id found!");
