@@ -73,56 +73,66 @@ client.once("ready", async () => {
         //   errors: null
         // }
 
-        const projectId = payload.new.projectId;
+        //console.log("Got payload: ", payload);
 
-        // Get the channelId from the database from the projectId
-        const { raffleChannelId, projectName } =
-          (
-            await db
-              .from("Discord")
-              .select("raffleChannelId")
-              .match({ projectId })
-              .single()
-          )?.data || {};
+        try {
+          const projectId = payload.new.projectId;
 
-        if (!raffleChannelId) {
-          return console.log("No channel id found!");
-        }
+          // Get the channelId from the database from the projectId
+          const { raffleChannelId, projectName } =
+            (
+              await db
+                .from("Discord")
+                .select("raffleChannelId, projectName")
+                .match({ projectId })
+                .single()
+            )?.data || {};
 
-        console.log(
-          `Got channelId: ${raffleChannelId} from project: ${projectName}`
-        );
+          if (!raffleChannelId) {
+            return console.log(
+              `No channel id found for projectId ${projectId}!`
+            );
+          }
 
-        // Get the list of winners from Entry Table given the projectId. filter the winners and only get discordUserId
-        const entries = await getWinners(projectId);
+          console.log(
+            `Got channelId: ${raffleChannelId} from project: ${projectName}`
+          );
 
-        if (entries?.length === 0) {
-          return console.log("No one won");
-        }
+          // Get the list of winners from Entry Table given the projectId. filter the winners and only get discordUserId
+          const entries = await getWinners(projectId);
 
-        console.log(
-          `Got entries from project: ${projectName} : ${entries?.length}`
-        );
+          if (entries?.length === 0) {
+            return console.log("No winners found");
+          }
 
-        // Build the message using the list of winners and pass it in the channel
-        const builtMessage = entries?.map((x) => `<@${x}>`).join(", ");
+          console.log(
+            `Got entries from project: ${projectName} : ${entries?.length}`
+          );
 
-        // Send the message
-        const channel = client.channels.cache.get(raffleChannelId);
-        channel.send(`Winners for ${projectName}: ${builtMessage}`);
+          // Build the message using the list of winners and pass it in the channel
+          const builtMessage = entries?.map((x) => `<@${x}>`).join(", ");
 
-        console.log(`Sent winners for ${projectName} : ${entries.length}`);
+          // Send the message
+          const channel = client.channels.cache.get(raffleChannelId);
+          channel.send(`Winners for ${projectName}: ${builtMessage}`);
 
-        // Update the RaffleWinnerQueue from the projectId and mark the flag active as false. This means we don't need to query this queue anymore since we have proccessed this
-        const { error } = await db
-          .from("RaffleWinnerQueue")
-          .update({
-            active: false,
-          })
-          .match({ projectId });
+          console.log(`Sent winners for ${projectName} : ${entries.length}`);
 
-        if (error) {
+          // Update the RaffleWinnerQueue from the projectId and mark the flag active as false. This means we don't need to query this queue anymore since we have proccessed this
+          const { error } = await db
+            .from("RaffleWinnerQueue")
+            .update({
+              active: false,
+            })
+            .match({ projectId });
+
+          if (error) {
+            console.log(error);
+          }
+        } catch (error) {
           console.log(error);
+
+          // TODO: ping my telegram bot
         }
       })
       .subscribe();
