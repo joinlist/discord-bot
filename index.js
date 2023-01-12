@@ -66,6 +66,67 @@ client.once("ready", async () => {
   }).setToken(TOKEN);
 
   /**
+   * Announce the raffle
+   */
+  (async () => {
+    try {
+      const channel = client.channels.cache.get("1002460057222520955");
+      const project = await getProject({
+        projectId: 1474,
+        select: "*",
+      });
+      const exampleEmbed = new EmbedBuilder()
+        .setColor(0x0099ff)
+        .setTitle(project.name)
+        .setURL("https://discord.js.org/")
+        // .setAuthor({
+        //   name: "Some name",
+        //   iconURL: "https://i.imgur.com/AfFp7pu.png",
+        //   url: "https://discord.js.org",
+        // })
+        .setDescription(project?.description)
+        .setThumbnail(project.image)
+        .addFields({ name: "\u200B", value: "\u200B" })
+        .addFields({
+          name: "Ends at",
+          // project.endAt format is ISO 2023-01-12 12:37:54.53+00, format to Thu Jan 15:15 format
+          value: new Date(project.endAt).toLocaleString(),
+        })
+        //.addFields({ name: "\u200B", value: "\u200B" })
+        // .addFields({
+        //   name: "Inline field title",
+        //   value: "Some value here",
+        // })
+        // //.addFields({ name: "\u200B", value: "\u200B" })
+        // .addFields({
+        //   name: "Inline field title",
+        //   value: "Some value here!",
+        // })
+        .addFields({ name: "\u200B", value: "\u200B" })
+        // .setImage(
+        //   "https://pbs.twimg.com/profile_banners/1487866247803027457/1643571790"
+        // )
+        .setTimestamp();
+      // .setFooter({
+      //   text: "Some footer text here",
+      //   iconURL: "https://i.imgur.com/AfFp7pu.png",
+      // });
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          //.setCustomId("primary")
+          .setLabel("Go to project")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`https://www.joinlist.me/${project.slug}`)
+      );
+
+      channel.send({ embeds: [exampleEmbed], components: [row] });
+    } catch (error) {
+      if (error) console.error(error);
+    }
+  })();
+
+  /**
    * Announce winners of the raffle
    */
 
@@ -202,67 +263,6 @@ client.once("ready", async () => {
           "Successfully registered application commands for development guild"
         );
       }
-    } catch (error) {
-      if (error) console.error(error);
-    }
-  })();
-
-  /**
-   * Announce the raffle
-   */
-  (async () => {
-    try {
-      const channel = client.channels.cache.get("1002460057222520955");
-      const project = await getProject({
-        projectId: 1474,
-        select: "*",
-      });
-      const exampleEmbed = new EmbedBuilder()
-        .setColor(0x0099ff)
-        .setTitle(project.name)
-        .setURL("https://discord.js.org/")
-        // .setAuthor({
-        //   name: "Some name",
-        //   iconURL: "https://i.imgur.com/AfFp7pu.png",
-        //   url: "https://discord.js.org",
-        // })
-        .setDescription(project?.description)
-        .setThumbnail(project.image)
-        .addFields({ name: "\u200B", value: "\u200B" })
-        .addFields({
-          name: "Ends at",
-          // project.endAt format is ISO 2023-01-12 12:37:54.53+00, format to Thu Jan 15:15 format
-          value: new Date(project.endAt).toLocaleString(),
-        })
-        //.addFields({ name: "\u200B", value: "\u200B" })
-        // .addFields({
-        //   name: "Inline field title",
-        //   value: "Some value here",
-        // })
-        // //.addFields({ name: "\u200B", value: "\u200B" })
-        // .addFields({
-        //   name: "Inline field title",
-        //   value: "Some value here!",
-        // })
-        .addFields({ name: "\u200B", value: "\u200B" })
-        // .setImage(
-        //   "https://pbs.twimg.com/profile_banners/1487866247803027457/1643571790"
-        // )
-        .setTimestamp();
-      // .setFooter({
-      //   text: "Some footer text here",
-      //   iconURL: "https://i.imgur.com/AfFp7pu.png",
-      // });
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          //.setCustomId("primary")
-          .setLabel("Go to project")
-          .setStyle(ButtonStyle.Link)
-          .setURL(`https://www.joinlist.me/${project.slug}`)
-      );
-
-      channel.send({ embeds: [exampleEmbed], components: [row] });
     } catch (error) {
       if (error) console.error(error);
     }
