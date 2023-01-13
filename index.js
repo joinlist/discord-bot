@@ -66,20 +66,36 @@ client.once("ready", async () => {
   }).setToken(TOKEN);
 
   /**
-   * Announce the raffle
+   * Process the announcement
    */
   (async () => {
-    db.from("Test")
-      .on("*", async (payload) => {
+    db.from("Announcement")
+      .on("INSERT", async (payload) => {
+        // Payload looks like:
+        // {
+        //   schema: 'public',
+        //   table: 'Announcement',
+        //   commit_timestamp: '2023-01-12T15:49:32Z',
+        //   eventType: 'INSERT',
+        //   new: { channelId: '1002460057222520955', id: 2, projectId: '1474' },
+        //   old: {},
+        //   errors: null
+        // }
+
         try {
-          // const projectId = 1474;
-          // const channelId = "1002460057222520955";
-          // const type = "raffle";
+          /**
+           * Errors is either null or an array of errors
+           */
+          const errors = payload.errors;
 
-          console.log("payload", payload);
+          if (errors) {
+            throw new Error(errors);
+          }
 
-          const { channelId, projectId, type } = payload.new;
-
+          const projectId = payload.new.projectId;
+          const type = payload.new.type;
+          const channelId = payload.new.channelId;
+          const provider = payload.new.provider;
           const channel = client.channels.cache.get(channelId);
 
           if (!channel) {
@@ -87,154 +103,142 @@ client.once("ready", async () => {
             return;
           }
 
-          if (type !== "raffle") {
-            console.error("Type is not raffle");
+          if (!projectId) {
+            console.error("Project id not found");
             return;
           }
 
-          const project = await getProject({
-            projectId,
-            select: "*",
-          });
+          if (!type) {
+            console.error("Type not found");
+            return;
+          }
 
-          /**
-           * Get the author of the project
-           */
-          const userId = project?.userId;
-          const twitterProfile = (
-            await db
-              .from("Account")
-              .select("*")
-              .match({ userId, provider: "twitter" })
-              .single()
-          )?.data?.profile;
+          if (!provider) {
+            console.error("Provider not found");
+            return;
+          }
 
-          const { profile_image_url_https, name } = twitterProfile || {};
+          // ,--.   ,--.,--.,--.  ,--.,--.  ,--.,------.,------.
+          // |  |   |  ||  ||  ,'.|  ||  ,'.|  ||  .---'|  .--. '
+          // |  |.'.|  ||  ||  |' '  ||  |' '  ||  `--, |  '--'.'
+          // |   ,'.   ||  ||  | `   ||  | `   ||  `---.|  |\  \
+          // '--'   '--'`--'`--'  `--'`--'  `--'`------'`--' '--'
+          if (type === "winner") {
+            console.log("Processing winner announcement");
 
-          console.log("twitterProfile", twitterProfile);
+            /**
+             * Get project name
+             */
+            const projectName = (await getProject({ projectId }))?.name;
 
-          const exampleEmbed = new EmbedBuilder()
-            .setColor(0x0099ff)
-            .setTitle(project.name)
-            .setURL(`https://www.joinlist.me/${project.slug}`)
-            .setAuthor({
-              name,
-              iconURL: profile_image_url_https,
-              //url: "https://discord.js.org",
-            })
-            .setDescription(project?.description)
-            .setThumbnail(project.image)
-            .addFields({ name: "\u200B", value: "\u200B" })
-            .addFields({
-              name: "Ends at",
-              // project.endAt format is ISO 2023-01-12 12:37:54.53+00, format to Thu Jan 15:15 format
-              value: new Date(project.endAt).toLocaleString(),
-            })
-            //.addFields({ name: "\u200B", value: "\u200B" })
-            // .addFields({
-            //   name: "Inline field title",
-            //   value: "Some value here",
-            // })
-            // //.addFields({ name: "\u200B", value: "\u200B" })
-            // .addFields({
-            //   name: "Inline field title",
-            //   value: "Some value here!",
-            // })
-            .addFields({ name: "\u200B", value: "\u200B" })
-            //.setImage(project.bannerImage)
-            .setTimestamp();
-          // .setFooter({
-          //   text: "Some footer text here",
-          //   iconURL: "https://i.imgur.com/AfFp7pu.png",
-          // });
+            if (!channelId) {
+              return console.log(
+                `No channel id found for projectId ${projectId}!`
+              );
+            }
 
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              //.setCustomId("primary")
-              .setLabel("Go to project")
-              .setStyle(ButtonStyle.Link)
+            console.log(
+              `Got channelId: ${channelId} from project: ${projectName}`
+            );
+
+            /**
+             * Returns list of discord user ids that are winners
+             */
+            const entries = await getWinners(projectId);
+
+            if (entries?.length === 0) {
+              return console.log("No winners found");
+            }
+
+            console.log(
+              `Got entries from project: ${projectName} : ${entries?.length}`
+            );
+
+            // Build the message using the list of winners and pass it in the channel
+            const builtMessage = entries?.map((x) => `<@${x}>`).join(", ");
+
+            // Send the message
+            channel.send(`Winners for ${projectName}: ${builtMessage}`);
+
+            console.log(`Sent winners for ${projectName} : ${entries.length}`);
+          } else if (type === "raffle") {
+            // ,------.   ,---.  ,------.,------.,--.   ,------.
+            // |  .--. ' /  O  \ |  .---'|  .---'|  |   |  .---'
+            // |  '--'.'|  .-.  ||  `--, |  `--, |  |   |  `--,
+            // |  |\  \ |  | |  ||  |`   |  |`   |  '--.|  `---.
+            // `--' '--'`--' `--'`--'    `--'    `-----'`------'
+            const project = await getProject({
+              projectId,
+              select: "*",
+            });
+
+            if (!project) {
+              console.error("Project not found");
+              return;
+            }
+
+            /**
+             * Get the author of the project
+             */
+            const userId = project?.userId;
+            const twitterProfile = (
+              await db
+                .from("Account")
+                .select("*")
+                .match({ userId, provider: "twitter" })
+                .single()
+            )?.data?.profile;
+
+            const { profile_image_url_https, name } = twitterProfile || {};
+
+            /**
+             * Create the embed
+             */
+            const exampleEmbed = new EmbedBuilder()
+              .setColor(0x0099ff)
+              .setTitle(project.name)
               .setURL(`https://www.joinlist.me/${project.slug}`)
-          );
+              .setAuthor({
+                name,
+                iconURL: profile_image_url_https,
+              })
+              .setDescription(project?.description)
+              .setThumbnail(project.image)
+              .addFields({ name: "\u200B", value: "\u200B" })
+              .addFields({
+                name: "Ends at",
+                value: new Date(project.endAt).toLocaleString(),
+              })
+              .setImage(project?.bannerImage || project.image)
+              .addFields({ name: "\u200B", value: "\u200B" })
+              .setTimestamp();
+            /**
+             * Create the button
+             */
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                //.setCustomId("primary")
+                .setLabel("Go to project")
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://www.joinlist.me/${project.slug}`)
+            );
 
-          channel.send({ embeds: [exampleEmbed], components: [row] });
+            /**
+             * Send the embed and button
+             */
+            channel.send({ embeds: [exampleEmbed], components: [row] });
+            console.log(`Sent raffle announcement for ${project.name}`);
+          } else {
+            console.error("Unknown type");
+          }
         } catch (error) {
-          if (error) console.error(error);
+          console.log(error);
+
+          // TODO: ping my telegram bot
         }
       })
       .subscribe();
   })();
-
-  /**
-   * Announce winners of the raffle
-   */
-
-  // (async () => {
-  //   db.from("Announcement")
-  //     .on("INSERT", async (payload) => {
-  //       // Payload looks like:
-  //       // {
-  //       //   schema: 'public',
-  //       //   table: 'Announcement',
-  //       //   commit_timestamp: '2023-01-12T15:49:32Z',
-  //       //   eventType: 'INSERT',
-  //       //   new: { channelId: '1002460057222520955', id: 2, projectId: '1474' },
-  //       //   old: {},
-  //       //   errors: null
-  //       // }
-
-  //       console.log("Got payload: ", payload);
-
-  //       try {
-  //         const projectId = payload.new.projectId;
-  //         const type = payload.new.stype;
-  //         const channelId = payload.new.channelId;
-
-  //         if (type !== "winner") {
-  //           return console.log("Project is not drawn yet");
-  //         }
-
-  //         /**
-  //          * Get project name
-  //          */
-  //         const projectName = (await getProject({ projectId }))?.name;
-
-  //         if (!channelId) {
-  //           return console.log(
-  //             `No channel id found for projectId ${projectId}!`
-  //           );
-  //         }
-
-  //         console.log(
-  //           `Got channelId: ${channelId} from project: ${projectName}`
-  //         );
-
-  //         // Get the list of winners from Entry Table given the projectId. filter the winners and only get discordUserId
-  //         const entries = await getWinners(projectId);
-
-  //         if (entries?.length === 0) {
-  //           return console.log("No winners found");
-  //         }
-
-  //         console.log(
-  //           `Got entries from project: ${projectName} : ${entries?.length}`
-  //         );
-
-  //         // Build the message using the list of winners and pass it in the channel
-  //         const builtMessage = entries?.map((x) => `<@${x}>`).join(", ");
-
-  //         // Send the message
-  //         const channel = client.channels.cache.get(channelId);
-  //         channel.send(`Winners for ${projectName}: ${builtMessage}`);
-
-  //         console.log(`Sent winners for ${projectName} : ${entries.length}`);
-  //       } catch (error) {
-  //         console.log(error);
-
-  //         // TODO: ping my telegram bot
-  //       }
-  //     })
-  //     .subscribe();
-  // })();
 
   /**
    * Registering the commands
