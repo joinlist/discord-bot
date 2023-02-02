@@ -1,4 +1,4 @@
-import fs from "fs";
+import * as fs from "fs";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import fetch from "isomorphic-fetch";
@@ -18,47 +18,25 @@ import {
 } from "discord.js";
 import db from "./utils/db";
 
-type Broadcast = {
-  id: number;
-  type:
-    | "assign_role"
-    | "announce_winners"
-    | "announce_project"
-    | "mint_reminder"
-    | "test";
-  provider: "discord";
-  metadata: Record<string, any>;
-};
-
-const getProject2 = (idOrSlug: string) => {
+const getProject2 = (idOrSlug) => {
   return fetch(`https://www.joinlist.me/api/v2/projects/${idOrSlug}`).then(
-    (r: any) => r.json()
+    (r) => r.json()
   );
 };
 
-const getProject = async ({
-  projectId,
-  select = "id, name, slug",
-}: {
-  projectId: any;
-  select?: string;
-}) => {
+const getProject = async ({ projectId, select = "id, name, slug" }) => {
   return (
     await db.from("Project").select(select).match({ id: projectId }).single()
   )?.data;
 };
 
-const getWinners = async (projectId: any) => {
+const getWinners = async (projectId) => {
   const { data } = await db.from("Entry").select("discordUserId").match({
     projectId,
     winner: true,
   });
 
-  return (
-    data
-      ?.map(({ discordUserId }: { discordUserId: any }) => discordUserId)
-      ?.filter(Boolean) || []
-  );
+  return data?.map(({ discordUserId }) => discordUserId)?.filter(Boolean) || [];
 };
 
 // Create a new client instance
@@ -67,7 +45,7 @@ const client = new Client({
 });
 
 // Loading commands from the commands folder
-const commands = [] as any;
+const commands = [];
 const commandFiles = fs
   .readdirSync("./commands")
   .filter((file) => file.endsWith(".js"));
@@ -99,7 +77,7 @@ client.once("ready", async (instance) => {
   const CLIENT_ID = client?.user?.id;
   const rest = new REST({
     version: "9",
-  }).setToken(TOKEN!);
+  }).setToken(TOKEN);
 
   /**
    * Create a role
@@ -188,9 +166,9 @@ client.once("ready", async (instance) => {
    */
   (async () => {
     db.from("Broadcast")
-      .on("INSERT", async (payload: any) => {
+      .on("INSERT", async (payload) => {
         const { schema, table, eventType, new: broadcast } = payload;
-        const { type, provider, metadata } = broadcast as Broadcast;
+        const { type, provider, metadata } = broadcast;
 
         try {
           /**
@@ -198,8 +176,8 @@ client.once("ready", async (instance) => {
            */
           const errors = payload.errors;
 
-          if (errors as any) {
-            throw new Error(errors as any);
+          if (errors) {
+            throw new Error(errors);
           }
 
           console.log("Processing broadcast", broadcast);
@@ -265,14 +243,10 @@ client.once("ready", async (instance) => {
               );
 
               // Build the message using the list of winners and pass it in the channel
-              const builtMessage = entries
-                ?.map((x: any) => `<@${x}>`)
-                .join(", ");
+              const builtMessage = entries?.map((x) => `<@${x}>`).join(", ");
 
               // Send the message
-              (channel as TextChannel).send(
-                `Winners for ${projectName}: ${builtMessage}`
-              );
+              channel.send(`Winners for ${projectName}: ${builtMessage}`);
 
               console.log(
                 `Sent winners for ${projectName} : ${entries.length}`
@@ -280,7 +254,7 @@ client.once("ready", async (instance) => {
             case "announce_project":
               console.log("Processing project announcement");
 
-              const { data: project } = (await getProject2(projectSlug)) as any;
+              const { data: project } = await getProject2(projectSlug);
 
               if (!project) {
                 console.error("Project not found");
@@ -307,60 +281,38 @@ client.once("ready", async (instance) => {
               const domain = "https://www.joinlist.me";
               const requirements = project?.requirements;
               const requriementsSolana = requirements?.solana;
-              const requriementsContracts = requirements?.contracts as
-                | Array<any>
-                | undefined;
+              const requriementsContracts = requirements?.contracts;
               const contractsMustOwn = requriementsContracts?.map(
-                (x: any) => x.name
-              ) as Array<string> | undefined;
+                (x) => x.name
+              );
 
               const requriementsDiscord = requirements?.discord;
-              const discordEnabled = requriementsDiscord?.connect as
-                | boolean
-                | undefined;
-              const discordServerLabel = requriementsDiscord?.serverLabel as
-                | string
-                | undefined;
-              const discordRoleLabel = requriementsDiscord?.roleLabel as
-                | string
-                | undefined;
-              const discordServerUrl = requriementsDiscord?.serverUr as
-                | string
-                | undefined;
+              const discordEnabled = requriementsDiscord?.connect;
+              const discordServerLabel = requriementsDiscord?.serverLabel;
+              const discordRoleLabel = requriementsDiscord?.roleLabel;
+              const discordServerUrl = requriementsDiscord?.serverUrl;
 
               const requriementsTwitter = requirements?.twitter;
-              const twitterEnabled = requriementsTwitter?.connect as
-                | boolean
-                | undefined;
-              const twitterAccountsToFollow =
-                requriementsTwitter?.follow as Array<string>;
+              const twitterEnabled = requriementsTwitter?.connect;
+              const twitterAccountsToFollow = requriementsTwitter?.follow;
               const twitterTweetToRetweetAndLike =
-                requriementsTwitter?.tweetUrl as string | undefined;
+                requriementsTwitter?.tweetUrl;
 
               const requriementBalance = requirements?.balance;
-              const balanceEnabled = requriementBalance?.enabled as
-                | boolean
-                | undefined;
-              const balanceQuantity = requriementBalance?.quantity as
-                | number
-                | undefined;
-              const balanceChainType = requriementBalance?.chain as
-                | string
-                | undefined;
-
-              const questionText = project?.questionText as string | undefined;
-              const accentColor = project.themeCustom?.accentColor as
-                | string
-                | undefined;
-              const mintDate = project?.mintDate as string | undefined;
-              const mintSupply = project?.mintSupply as number | undefined;
-              const projectWebsite = project.website as string | undefined;
-              const endAt = project?.endAt as string | undefined;
+              const balanceEnabled = requriementBalance?.enabled;
+              const balanceQuantity = requriementBalance?.quantity;
+              const balanceChainType = requriementBalance?.chain;
+              const questionText = project?.questionText;
+              const accentColor = project.themeCustom?.accentColor;
+              const mintDate = project?.mintDate;
+              const mintSupply = project?.mintSupply;
+              const projectWebsite = project.website;
+              const endAt = project?.endAt;
               // Make the date read like 2 days, or 2 hours without using moment
               // the date could be days weeks or months away or hours away
               // so we need to calculate the difference
               const now = new Date();
-              const endAtDateObj = new Date(endAt!);
+              const endAtDateObj = new Date(endAt);
               const diff = Math.abs(endAtDateObj.getTime() - now.getTime());
               const diffDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
               const diffHours = Math.ceil(diff / (1000 * 60 * 60));
@@ -370,7 +322,7 @@ client.once("ready", async (instance) => {
                 diffDays > 1 ? `${diffDays} days` : `${diffHours} hours`;
 
               // create a human readable date like Thur 2 Feb, 16:00
-              const endAtDate = new Date(endAt!).toLocaleString("en-GB", {
+              const endAtDate = new Date(endAt).toLocaleString("en-GB", {
                 weekday: "short",
                 day: "numeric",
                 month: "short",
@@ -438,7 +390,7 @@ client.once("ready", async (instance) => {
               /**
                * Build the fields for project details
                */
-              const fields = [] as Array<any>;
+              const fields = [];
               if (mintDate) {
                 fields.push({
                   name: "Mint Date",
@@ -468,7 +420,7 @@ client.once("ready", async (instance) => {
                 });
               }
 
-              const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                   .setLabel("Go to project")
                   .setStyle(ButtonStyle.Link)
@@ -502,7 +454,7 @@ client.once("ready", async (instance) => {
                 })
                 .setImage(project?.bannerImage || project.image);
 
-              const join = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              const join = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                   .setCustomId("primary")
                   .setLabel("Register")
@@ -512,7 +464,7 @@ client.once("ready", async (instance) => {
               /**
                * Send the embed and button
                */
-              (channel as TextChannel).send({
+              channel.send({
                 embeds: [embed],
                 components: [row],
               });
@@ -523,7 +475,7 @@ client.once("ready", async (instance) => {
             case "test":
               console.log("Processing test");
 
-            //(channel as TextChannel).send("Test");
+            //(channel).send("Test");
             default:
               console.log("Unknown event type");
           }
@@ -542,13 +494,13 @@ client.once("ready", async (instance) => {
   (async () => {
     try {
       if (!TEST_GUILD_ID) {
-        await rest.put(Routes.applicationCommands(CLIENT_ID!), {
+        await rest.put(Routes.applicationCommands(CLIENT_ID), {
           body: commands,
         });
         console.log("Successfully registered application commands globally");
       } else {
         await rest.put(
-          Routes.applicationGuildCommands(CLIENT_ID!, TEST_GUILD_ID),
+          Routes.applicationGuildCommands(CLIENT_ID, TEST_GUILD_ID),
           {
             body: commands,
           }
@@ -574,7 +526,7 @@ client.on("interactionCreate", async (interaction) => {
     if (error) console.error(error);
     // @ts-ignore
     await interaction.reply({
-      content: "There was an error while executing this command!",
+      content: "There  error while executing this command!",
       ephemeral: true,
     });
   }
