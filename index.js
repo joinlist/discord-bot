@@ -1,9 +1,9 @@
-import * as fs from "fs";
-import { REST } from "@discordjs/rest";
-import { Routes } from "discord-api-types/v9";
-import fetch from "isomorphic-fetch";
+const fs = require('fs')
+const { REST } = require("@discordjs/rest");
+const { Routes } = require("discord-api-types/v9");
+const fetch = require("isomorphic-fetch");
 
-import {
+const {
   Client,
   GatewayIntentBits,
   Collection,
@@ -15,8 +15,8 @@ import {
   TextChannel,
   ChannelType,
   Events,
-} from "discord.js";
-import db from "./utils/db";
+} = require("discord.js");
+const db = require("./utils/db");
 
 const getProject2 = (idOrSlug) => {
   return fetch(`https://www.joinlist.me/api/v2/projects/${idOrSlug}`).then(
