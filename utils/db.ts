@@ -15,6 +15,4 @@ const options = {
 };
 const db = createClient(supabaseUrl, supabaseKey, options);
 
-module.exports = {
-  db,
-};
+export default db;
