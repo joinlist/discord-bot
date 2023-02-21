@@ -1,4 +1,4 @@
-const fs = require('fs')
+const fs = require("fs");
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
 const fetch = require("isomorphic-fetch");
@@ -130,12 +130,23 @@ client.once("ready", async (instance) => {
    * List role names
    */
   // try {
-  //   const rolesMustHave = ["1070294158935339099"];
   //   const guild = await client.guilds.fetch("1002460056366886943");
   //   const channel = await guild.channels.fetch("1002460057222520955");
   //   const roles = await guild.roles.fetch();
   //   // list role names
-  //   //console.log(roles.map((x) => x.name));
+  //   console.log(roles.map((x) => x.name));
+  // } catch (e) {
+  //   console.error(e);
+  // }
+
+  // /**
+  //  * List channel names
+  //  */
+  // try {
+  //   const guild = await client.guilds.fetch("1002460056366886943");
+  //   const channels = await guild.channels.fetch();
+  //   // list channel names
+  //   console.log(channels.map((x) => x.name));
   // } catch (e) {
   //   console.error(e);
   // }
@@ -208,11 +219,12 @@ client.once("ready", async (instance) => {
           }
 
           switch (type) {
-            case "assign_role":
-              console.log("Processing role assignment");
             case "announce_winners":
               console.log("Processing winner announcement");
-              console.log("Processing winner announcement");
+
+              /**
+               * Assign role to a specific user if that setting is enabled
+               */
 
               /**
                * Get project name
@@ -532,19 +544,175 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+/**
+ * Handle role mutations
+ *
+ * Update/inserts the database with the latest roles
+ */
+const handleRoleMutation = async (guild) => {
+  // guild could not exist here, so we need to return early
+  if (!guild.available) {
+    return;
+  }
+
+  const roles = await guild.roles.fetch();
+
+  const rolesToSave = roles.map((role) => {
+    return {
+      roleId: role.id,
+      type: role.type,
+      name: role.name,
+      color: role.color,
+      hoist: role.hoist,
+      position: role.position,
+      managed: role.managed,
+      mentionable: role.mentionable,
+      serverId: role.guild.id,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  const res = await db.from("DiscordRole").upsert(rolesToSave, {
+    onConflict: ["roleId", "serverId"],
+  });
+
+  return res;
+};
+
+/**
+ * Handle channel mutations
+ */
+const handleChannelMutation = async (guild) => {
+  // guild could not exist here, so we need to return early
+  if (!guild.available) {
+    return;
+  }
+
+  const channels = await guild.channels.fetch();
+  const channelsToSave = channels.map((channel) => ({
+    serverId: channel.guild.id,
+    channelId: channel.id,
+    name: channel.name,
+    type: channel.type,
+    position: channel.position,
+    parentId: channel.parentId,
+    description: channel.topic || null,
+    updatedAt: new Date().toISOString(),
+  }));
+
+  const res = await db.from("DiscordChannel").upsert(channelsToSave, {
+    onConflict: ["channelId", "serverId"],
+  });
+
+  return res;
+};
+
 client.on("roleCreate", async (role) => {
-  console.log("roleCreate", role);
-  console.log(role.iconURL);
+  try {
+    console.log("roleCreate");
+    const { error } = await handleRoleMutation(role.guild);
+    if (error) {
+      console.log(`Error handling role mutation in roleCreate`, error);
+      return;
+    }
+    console.log(`roleCreate done`);
+  } catch (e) {
+    console.log(`Error in roleCreate: ${e.message}`);
+  }
 });
 
 client.on("roleUpdate", async (oldRole, newRole) => {
-  console.log("roleUpdate", oldRole, newRole);
-  console.log(JSON.stringify(oldRole));
-  //console.log(newRole.guild.iconURL())
+  try {
+    console.log("roleUpdate");
+    const { error } = await handleRoleMutation(newRole.guild);
+    if (error) {
+      console.log(`Error handling role mutation in roleUpdate`, error);
+      return;
+    }
+    console.log(`roleUpdate done`);
+  } catch (e) {
+    console.log(`Error in roleUpdate: ${e.message}`);
+  }
 });
 
 client.on("roleDelete", async (role) => {
-  console.log("roleDelete", role);
+  try {
+    console.log("roleDelete");
+    await db.from("DiscordRole").delete().eq("roleId", role.id);
+    const { error } = await handleRoleMutation(role.guild);
+    if (error) {
+      console.log(`Error handling role mutation in roleDelete`, error);
+      return;
+    }
+    console.log(`roleDelete done`);
+  } catch (e) {
+    console.log(`Error in roleDelete: ${e.message}`);
+  }
+});
+
+// /**
+//  * Listen to channel mutations
+//  */
+client.on("channelCreate", async (channel) => {
+  try {
+    console.log("channelCreate");
+    const { error } = await handleChannelMutation(channel.guild);
+    if (error) {
+      console.log(`Error handling channel mutation in channelCreate`, error);
+      return;
+    }
+
+    console.log(`channelCreate done`);
+  } catch (e) {
+    console.log(`Error in channelCreate: ${e.message}`);
+  }
+});
+
+client.on("channelUpdate", async (oldChannel, newChannel) => {
+  try {
+    console.log("channelUpdate");
+    const { error } = await handleChannelMutation(newChannel.guild);
+    if (error) {
+      console.log(`Error handling channel mutation in channelUpdate`, error);
+      return;
+    }
+    console.log(`channelUpdate done`);
+  } catch (e) {
+    console.log(`Error in channelUpdate: ${e.message}`);
+  }
+});
+
+client.on("channelDelete", async (channel) => {
+  try {
+    console.log("channelDelete");
+    await db.from("DiscordChannel").delete().eq("channelId", channel.id);
+    const { error } = await handleChannelMutation(channel.guild);
+    if (error) {
+      console.log(`Error handling channel mutation in channelDelete`, error);
+      return;
+    }
+    console.log(`channelDelete done`);
+  } catch (e) {
+    console.log(`Error in channelDelete: ${e.message}`);
+  }
+});
+
+/**
+ * Listen to guild mutations
+ *
+ * Triggers when the bot joins a new guild
+ */
+client.on("guildCreate", async (guild) => {
+  try {
+    console.log(
+      `Joined a new guild: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`
+    );
+    await handleChannelMutation(guild);
+    await handleRoleMutation(guild);
+    console.log(`guildCreate done`);
+  } catch (error) {
+    console.error(`Something went wrong when joining a new guild`, error);
+  }
 });
 
 // Login to Discord with your client's token

@@ -1,18 +1,9 @@
 const { createClient } = require("@supabase/supabase-js");
+// require the dotenv package
 require("dotenv").config();
-const supabaseUrl = `https://${
-  process.env.SUPABASE_PROJECT_ID || process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID
-}.supabase.co`;
-const supabaseKey =
-  process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_KEY;
 
-const options = {
-  schema: "public",
-  headers: { "x-my-custom-header": "joinlist-bot" },
-  autoRefreshToken: true,
-  persistSession: true,
-  detectSessionInUrl: true,
-};
-const db = createClient(supabaseUrl, supabaseKey, options);
+const supabaseUrl = `${process.env.SUPABASE_URL}`;
+const supabaseKey = process.env.SUPABASE_KEY;
+const db = createClient(supabaseUrl, supabaseKey);
 
 module.exports = db;

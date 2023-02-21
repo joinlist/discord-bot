@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { InteractionType } = require("discord.js");
-const { db } = require("../utils/db");
+const db = require("../utils/db");
 
 const getProject = async ({ projectId, select = "id, name, slug" }) => {
   return (
