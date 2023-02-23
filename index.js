@@ -386,7 +386,7 @@ client.once("ready", async (instance) => {
                 requirementsText += `● Required ${balanceQuantity} ${balanceChainType} balance`;
                 requirementsText += `\n`;
               }
-              if (contractsMustOwn) {
+              if (contractsMustOwn && contractsMustOwn.length > 0) {
                 requirementsText += `● Owns ${contractsMustOwn?.join(", ")}`;
                 requirementsText += `\n`;
               }
@@ -434,7 +434,7 @@ client.once("ready", async (instance) => {
 
               const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                  .setLabel("Go to project")
+                  .setLabel("Go to page")
                   .setStyle(ButtonStyle.Link)
                   .setURL(`https://www.joinlist.me/${project.slug}`)
               );
@@ -442,29 +442,38 @@ client.once("ready", async (instance) => {
               /**
                * Build the embed
                */
+              console.log(`Building embed for ${projectSlug}`);
               const embed = new EmbedBuilder()
                 .setAuthor({
-                  name,
-                  iconURL: profile_image_url_https,
+                  name: name || "Joinlist",
+                  iconURL:
+                    profile_image_url_https ||
+                    "https://www.joinlist.me/dark.png",
                 })
-                .setThumbnail(project.image)
+                .setThumbnail(
+                  project.image || "https://www.joinlist.me/og1.jpg"
+                )
                 .setColor(0x0099ff)
-                .setTitle(project?.name)
+                .setTitle(project?.name || "Untitled")
                 .setURL(`${domain}/${projectSlug}`)
                 .setDescription(
                   `
                 **Description**
-                ${project?.description}
+                ${project?.description || "No description"}
                 
                 **Requirements**
-                ${requirementsText}
+                ${requirementsText || "No requirements"}
                 `
                 )
                 .addFields({ name: "\u200B", value: "\u200B" }, ...fields, {
                   name: "\u200B",
                   value: "\u200B",
                 })
-                .setImage(project?.bannerImage || project.image);
+                .setImage(
+                  project?.bannerImage ||
+                    project.image ||
+                    "https://www.joinlist.me/og1.jpg"
+                );
 
               const join = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -476,6 +485,7 @@ client.once("ready", async (instance) => {
               /**
                * Send the embed and button
                */
+              console.log(`Sending embed for ${projectSlug}`);
               channel.send({
                 embeds: [embed],
                 components: [row],
@@ -487,9 +497,9 @@ client.once("ready", async (instance) => {
             case "test":
               console.log("Processing test");
 
-            //(channel).send("Test");
+              channel.send("Test");
             default:
-              console.log("Unknown event type");
+            //console.log("Unknown event type");
           }
         } catch (error) {
           console.log(error);
