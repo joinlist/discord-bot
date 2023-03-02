@@ -194,6 +194,7 @@ client.once("ready", async (instance) => {
           console.log("Processing broadcast", broadcast);
 
           const channelId = metadata.channelId;
+          const roleId = metadata.roleId;
           const projectId = metadata.projectId;
           const projectSlug = metadata.projectSlug;
           const channel = client.channels.cache.get(channelId);
@@ -220,286 +221,316 @@ client.once("ready", async (instance) => {
 
           switch (type) {
             case "announce_winners":
-              console.log("Processing winner announcement");
+              try {
+                console.log("Processing winner announcement");
 
-              /**
-               * Assign role to a specific user if that setting is enabled
-               */
+                /**
+                 * Assign role to a specific user if that setting is enabled
+                 */
 
-              /**
-               * Get project name
-               */
-              const projectName = (await getProject({ projectId }))?.name;
+                /**
+                 * Get project name
+                 */
+                const projectName = (await getProject({ projectId }))?.name;
 
-              if (!channelId) {
-                return console.log(
-                  `No channel id found for projectId ${projectId}!`
-                );
-              }
-
-              console.log(
-                `Got channelId: ${channelId} from project: ${projectName}`
-              );
-
-              /**
-               * Returns list of discord user ids that are winners
-               */
-              const entries = await getWinners(projectId);
-
-              if (entries?.length === 0) {
-                return console.log("No winners found");
-              }
-
-              console.log(
-                `Got entries from project: ${projectName} : ${entries?.length}`
-              );
-
-              // Build the message using the list of winners and pass it in the channel
-              const builtMessage = entries?.map((x) => `<@${x}>`).join(", ");
-
-              // Send the message
-              channel.send(`Winners for ${projectName}: ${builtMessage}`);
-
-              console.log(
-                `Sent winners for ${projectName} : ${entries.length}`
-              );
-            case "announce_project":
-              console.log("Processing project announcement");
-
-              const { data: project } = await getProject2(projectSlug);
-
-              if (!project) {
-                console.error("Project not found");
-                return;
-              }
-
-              /**
-               * Get the author of the project
-               */
-              const userId = project?.userId;
-              const twitterProfile = (
-                await db
-                  .from("Account")
-                  .select("*")
-                  .match({ userId, provider: "twitter" })
-                  .single()
-              )?.data?.profile;
-
-              const { profile_image_url_https, name } = twitterProfile || {};
-
-              /**
-               * Get the project's requirements
-               */
-              const domain = "https://www.joinlist.me";
-              const requirements = project?.requirements;
-              const requriementsSolana = requirements?.solana;
-              const requriementsContracts = requirements?.contracts;
-              const contractsMustOwn = requriementsContracts?.map(
-                (x) => x.name
-              );
-
-              const requriementsDiscord = requirements?.discord;
-              const discordEnabled = requriementsDiscord?.connect;
-              const discordServerLabel = requriementsDiscord?.serverLabel;
-              const discordRoleLabel = requriementsDiscord?.roleLabel;
-              const discordServerUrl = requriementsDiscord?.serverUrl;
-
-              const requriementsTwitter = requirements?.twitter;
-              const twitterEnabled = requriementsTwitter?.connect;
-              const twitterAccountsToFollow = requriementsTwitter?.follow;
-              const twitterTweetToRetweetAndLike =
-                requriementsTwitter?.tweetUrl;
-
-              const requriementBalance = requirements?.balance;
-              const balanceEnabled = requriementBalance?.enabled;
-              const balanceQuantity = requriementBalance?.quantity;
-              const balanceChainType = requriementBalance?.chain;
-              const questionText = project?.questionText;
-              const accentColor = project.themeCustom?.accentColor;
-              const mintDate = project?.mintDate;
-              const mintSupply = project?.mintSupply;
-              const projectWebsite = project.website;
-              const endAt = project?.endAt;
-              // Make the date read like 2 days, or 2 hours without using moment
-              // the date could be days weeks or months away or hours away
-              // so we need to calculate the difference
-              const now = new Date();
-              const endAtDateObj = new Date(endAt);
-              const diff = Math.abs(endAtDateObj.getTime() - now.getTime());
-              const diffDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
-              const diffHours = Math.ceil(diff / (1000 * 60 * 60));
-              const diffMinutes = Math.ceil(diff / (1000 * 60));
-              const diffSeconds = Math.ceil(diff / 1000);
-              const timeLeft =
-                diffDays > 1 ? `${diffDays} days` : `${diffHours} hours`;
-
-              // create a human readable date like Thur 2 Feb, 16:00
-              const endAtDate = new Date(endAt).toLocaleString("en-GB", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                hour: "numeric",
-                minute: "numeric",
-              });
-
-              // this is the form
-              // addressRequired: true,
-              // emailRequired: true,
-              // nameRequired: true,
-              // phoneRequired: true,
-              // if any of the above are true, then the form is enabled
-              // if any of them are null, then the form is disabled
-              // if all of them are false, then the form is disabled
-              const formEnabled =
-                project?.addressRequired ||
-                project?.emailRequired ||
-                project?.nameRequired ||
-                project?.phoneRequired;
-
-              /**
-               * Build the requirements text
-               */
-              let requirementsText = "";
-              if (discordEnabled) {
-                requirementsText += `● Must be a member of the [${discordServerLabel}](${discordServerUrl}) Discord server`;
-                requirementsText += `\n`;
-              }
-              if (discordRoleLabel) {
-                requirementsText += `● Must have the role ${discordRoleLabel}`;
-                requirementsText += `\n`;
-              }
-              if (twitterEnabled) {
-                const twitterAccountsToFollowUrls =
-                  twitterAccountsToFollow?.map(
-                    (x) => `[@${x}](https://twitter.com/${x})`
+                if (!channelId) {
+                  return console.log(
+                    `No channel id found for projectId ${projectId}!`
                   );
-                requirementsText += `● Follow ${twitterAccountsToFollowUrls?.join(
-                  ", "
-                )}`;
-                requirementsText += `\n`;
-              }
-              if (twitterTweetToRetweetAndLike) {
-                requirementsText += `● Liked and retweeted [this tweet](${twitterTweetToRetweetAndLike})`;
-                requirementsText += `\n`;
-              }
-              if (balanceEnabled) {
-                requirementsText += `● Required ${balanceQuantity} ${balanceChainType} balance`;
-                requirementsText += `\n`;
-              }
-              if (contractsMustOwn && contractsMustOwn.length > 0) {
-                requirementsText += `● Owns ${contractsMustOwn?.join(", ")}`;
-                requirementsText += `\n`;
-              }
-              if (questionText) {
-                requirementsText += `● Answered the question: "${questionText}" on the [Joinlist form](${domain}/${projectSlug})`;
-                requirementsText += `\n`;
-              }
-              if (formEnabled) {
-                requirementsText += `● Complete the [Joinlist form](${domain}/${projectSlug})`;
-                requirementsText += `\n`;
-              }
+                }
 
-              /**
-               * Build the fields for project details
-               */
-              const fields = [];
-              if (mintDate) {
-                fields.push({
-                  name: "Mint Date",
-                  value: mintDate,
-                  inline: true,
-                });
-              }
-              if (mintSupply) {
-                fields.push({
-                  name: "Mint Supply",
-                  value: mintSupply,
-                  inline: true,
-                });
-              }
-              if (projectWebsite) {
-                fields.push({
-                  name: "Website",
-                  value: projectWebsite,
-                  inline: true,
-                });
-              }
-              if (endAt) {
-                fields.push({
-                  name: "Ends at",
-                  value: `${endAtDate}. ${timeLeft} from now`,
-                  inline: true,
-                });
-              }
+                console.log(
+                  `Got channelId: ${channelId} from project: ${projectName}`
+                );
 
-              const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                  .setLabel("Go to page")
-                  .setStyle(ButtonStyle.Link)
-                  .setURL(`https://www.joinlist.me/${project.slug}`)
-              );
+                /**
+                 * Returns list of discord user ids that are winners
+                 */
+                const entries = await getWinners(projectId);
 
-              /**
-               * Build the embed
-               */
-              console.log(`Building embed for ${projectSlug}`);
-              const embed = new EmbedBuilder()
-                .setAuthor({
-                  name: name || "Joinlist",
-                  iconURL:
-                    profile_image_url_https ||
-                    "https://www.joinlist.me/dark.png",
-                })
-                .setThumbnail(
-                  project.image || "https://www.joinlist.me/og1.jpg"
-                )
-                .setColor(0x0099ff)
-                .setTitle(project?.name || "Untitled")
-                .setURL(`${domain}/${projectSlug}`)
-                .setDescription(
-                  `
+                if (entries?.length === 0) {
+                  return console.log("No winners found");
+                }
+
+                console.log(
+                  `Got entries from project: ${projectName} : ${entries?.length}`
+                );
+
+                // Build the message using the list of winners and pass it in the channel
+                const builtMessage = entries?.map((x) => `<@${x}>`).join(", ");
+
+                // Send the message
+                channel.send(`Winners for ${projectName}: ${builtMessage}`);
+
+                console.log(
+                  `Sent winners for ${projectName} : ${entries.length}`
+                );
+              } catch (e) {
+                console.error(e);
+              }
+              break;
+            case "announce_project":
+              try {
+                console.log(`${projectSlug}: Processing project announcement`);
+
+                const { data: project } = await getProject2(projectSlug);
+
+                if (!project) {
+                  console.error("Project not found");
+                  return;
+                }
+
+                /**
+                 * Get the author of the project
+                 */
+                const userId = project?.userId;
+                const twitterProfile = (
+                  await db
+                    .from("Account")
+                    .select("*")
+                    .match({ userId, provider: "twitter" })
+                    .single()
+                )?.data?.profile;
+
+                const { profile_image_url_https, name } = twitterProfile || {};
+
+                /**
+                 * Get the project's requirements
+                 */
+                const domain = "https://www.joinlist.me";
+                const requirements = project?.requirements;
+                const requriementsSolana = requirements?.solana;
+                const requriementsContracts = requirements?.contracts;
+                const contractsMustOwn = requriementsContracts?.map(
+                  (x) => x.name
+                );
+
+                const requriementsDiscord = requirements?.discord;
+                const discordEnabled = requriementsDiscord?.connect;
+                const discordServerLabel = requriementsDiscord?.serverLabel;
+                const discordRoleLabel = requriementsDiscord?.roleLabel;
+                const discordServerUrl = requriementsDiscord?.serverUrl;
+
+                const requriementsTwitter = requirements?.twitter;
+                const twitterEnabled = requriementsTwitter?.connect;
+                const twitterAccountsToFollow = requriementsTwitter?.follow;
+                const twitterTweetToRetweetAndLike =
+                  requriementsTwitter?.tweetUrl;
+
+                const requriementBalance = requirements?.balance;
+                const balanceEnabled = requriementBalance?.enabled;
+                const balanceQuantity = requriementBalance?.quantity;
+                const balanceChainType = requriementBalance?.chain;
+                const questionText = project?.questionText;
+                const accentColor = project.themeCustom?.accentColor;
+                const mintDate = project?.mintDate;
+                const mintSupply = project?.mintSupply;
+                const projectWebsite = project.website;
+                const endAt = project?.endAt;
+                // Make the date read like 2 days, or 2 hours without using moment
+                // the date could be days weeks or months away or hours away
+                // so we need to calculate the difference
+                const now = new Date();
+                const endAtDateObj = new Date(endAt);
+                const diff = Math.abs(endAtDateObj.getTime() - now.getTime());
+                const diffDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                const diffHours = Math.ceil(diff / (1000 * 60 * 60));
+                const diffMinutes = Math.ceil(diff / (1000 * 60));
+                const diffSeconds = Math.ceil(diff / 1000);
+                const timeLeft =
+                  diffDays > 1 ? `${diffDays} days` : `${diffHours} hours`;
+
+                // create a human readable date like Thur 2 Feb, 16:00
+                const endAtDate = new Date(endAt).toLocaleString("en-GB", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  hour: "numeric",
+                  minute: "numeric",
+                });
+
+                // this is the form
+                // addressRequired: true,
+                // emailRequired: true,
+                // nameRequired: true,
+                // phoneRequired: true,
+                // if any of the above are true, then the form is enabled
+                // if any of them are null, then the form is disabled
+                // if all of them are false, then the form is disabled
+                const formEnabled =
+                  project?.addressRequired ||
+                  project?.emailRequired ||
+                  project?.nameRequired ||
+                  project?.phoneRequired;
+
+                /**
+                 * Build the requirements text
+                 */
+                let requirementsText = "";
+                if (discordEnabled) {
+                  requirementsText += `● Must be a member of the [${discordServerLabel}](${discordServerUrl}) Discord server`;
+                  requirementsText += `\n`;
+                }
+                if (discordRoleLabel) {
+                  requirementsText += `● Must have the role ${discordRoleLabel}`;
+                  requirementsText += `\n`;
+                }
+                if (twitterEnabled) {
+                  const twitterAccountsToFollowUrls =
+                    twitterAccountsToFollow?.map(
+                      (x) => `[@${x}](https://twitter.com/${x})`
+                    );
+                  requirementsText += `● Follow ${twitterAccountsToFollowUrls?.join(
+                    ", "
+                  )}`;
+                  requirementsText += `\n`;
+                }
+                if (twitterTweetToRetweetAndLike) {
+                  requirementsText += `● Liked and retweeted [this tweet](${twitterTweetToRetweetAndLike})`;
+                  requirementsText += `\n`;
+                }
+                if (balanceEnabled) {
+                  requirementsText += `● Required ${balanceQuantity} ${balanceChainType} balance`;
+                  requirementsText += `\n`;
+                }
+                if (contractsMustOwn && contractsMustOwn.length > 0) {
+                  requirementsText += `● Owns ${contractsMustOwn?.join(", ")}`;
+                  requirementsText += `\n`;
+                }
+                if (questionText) {
+                  requirementsText += `● Answered the question: "${questionText}" on the [Joinlist form](${domain}/${projectSlug})`;
+                  requirementsText += `\n`;
+                }
+                if (formEnabled) {
+                  requirementsText += `● Complete the [Joinlist form](${domain}/${projectSlug})`;
+                  requirementsText += `\n`;
+                }
+
+                /**
+                 * Prepend **Requirements** to the requirements text if there are any
+                 */
+                if (requirementsText) {
+                  requirementsText = `**Requirements**\n${requirementsText}`;
+                }
+
+                /**
+                 * Build the fields for project details
+                 */
+                const fields = [];
+                if (mintDate) {
+                  fields.push({
+                    name: "Mint Date",
+                    value: mintDate,
+                    inline: true,
+                  });
+                }
+                if (mintSupply) {
+                  fields.push({
+                    name: "Mint Supply",
+                    value: mintSupply,
+                    inline: true,
+                  });
+                }
+                if (projectWebsite) {
+                  fields.push({
+                    name: "Website",
+                    value: projectWebsite,
+                    inline: true,
+                  });
+                }
+                if (endAt) {
+                  fields.push({
+                    name: "Ends at",
+                    value: `${endAtDate}. ${timeLeft} from now`,
+                    inline: true,
+                  });
+                }
+
+                const row = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder()
+                    .setLabel("Go to page")
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(`https://www.joinlist.me/${project.slug}`)
+                );
+
+                /**
+                 * Build the embed
+                 */
+                console.log(`${projectSlug}: Building embed`);
+                const embed = new EmbedBuilder()
+                  .setAuthor({
+                    name: name || "Joinlist",
+                    iconURL:
+                      profile_image_url_https ||
+                      "https://www.joinlist.me/joinlist-dark.png",
+                  })
+                  .setThumbnail(
+                    project.image || "https://www.joinlist.me/og1.jpg"
+                  )
+                  .setColor(0x0099ff)
+                  .setTitle(project?.name || "Untitled")
+                  .setURL(`${domain}/${projectSlug}`)
+                  .setDescription(
+                    `
                 **Description**
                 ${project?.description || "No description"}
                 
-                **Requirements**
-                ${requirementsText || "No requirements"}
+                ${requirementsText || ""}
                 `
-                )
-                .addFields({ name: "\u200B", value: "\u200B" }, ...fields, {
-                  name: "\u200B",
-                  value: "\u200B",
-                })
-                .setImage(
-                  project?.bannerImage ||
-                    project.image ||
-                    "https://www.joinlist.me/og1.jpg"
+                  )
+                  .addFields({ name: "\u200B", value: "\u200B" }, ...fields, {
+                    name: "\u200B",
+                    value: "\u200B",
+                  })
+                  .setImage(
+                    project?.bannerImage ||
+                      project.image ||
+                      "https://www.joinlist.me/og1.jpg"
+                  );
+
+                const join = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder()
+                    .setCustomId("primary")
+                    .setLabel("Register")
+                    .setStyle(ButtonStyle.Primary)
                 );
 
-              const join = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                  .setCustomId("primary")
-                  .setLabel("Register")
-                  .setStyle(ButtonStyle.Primary)
-              );
-
-              /**
-               * Send the embed and button
-               */
-              console.log(`Sending embed for ${projectSlug}`);
-              channel.send({
-                embeds: [embed],
-                components: [row],
-              });
-
-              console.log(`Sent raffle announcement for ${project.name}`);
+                /**
+                 * Send the embed and button
+                 */
+                let content = "";
+                if (roleId) {
+                  content = `<@&${roleId}>`;
+                }
+                console.log(`${projectSlug}: Sending embed`);
+                channel.send({
+                  content: `${content}`,
+                  embeds: [embed],
+                  components: [row],
+                });
+                console.log(`${projectSlug}: Sent raffle announcement`);
+              } catch (e) {
+                console.error(e);
+              }
+              break;
             case "mint_reminder":
-              console.log("Processing mint reminder");
+              try {
+                console.log("Processing mint reminder");
+              } catch (e) {
+                console.error(e);
+              }
+              break;
             case "test":
-              console.log("Processing test");
-
-              channel.send("Test");
+              try {
+                console.log("Processing test");
+                channel.send("Test");
+              } catch (e) {
+                console.error(e);
+              }
+              break;
             default:
-            //console.log("Unknown event type");
+              console.log("Unknown event type");
+              break;
           }
         } catch (error) {
           console.log(error);
@@ -717,8 +748,17 @@ client.on("guildCreate", async (guild) => {
     console.log(
       `Joined a new guild: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`
     );
-    await handleChannelMutation(guild);
-    await handleRoleMutation(guild);
+    const { error: errorChannel } = await handleChannelMutation(guild);
+    const { error: errorRole } = await handleRoleMutation(guild);
+    if (errorChannel) {
+      console.log(
+        `Error handling channel mutation in guildCreate`,
+        errorChannel
+      );
+    }
+    if (errorRole) {
+      console.log(`Error handling role mutation in guildCreate`, errorRole);
+    }
     console.log(`guildCreate done`);
   } catch (error) {
     console.error(`Something went wrong when joining a new guild`, error);
